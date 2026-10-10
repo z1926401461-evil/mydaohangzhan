@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的收藏空间</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --sidebar-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+            --accent: #0071e3;
+            --radius: 12px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.04);
+            --shadow-hover: 0 8px 20px rgba(0,0,0,0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== 侧边栏 ===== */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid rgba(0,0,0,0.06);
+            padding: 32px 16px;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        .sidebar-header {
+            padding: 0 12px 24px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+        }
+        .sidebar-header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+        .sidebar-header p { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+        
+        .nav-item {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-sub);
+            cursor: grab;
+            transition: background 0.2s;
+            margin-bottom: 2px;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text-main); }
+        .nav-item.active { background: rgba(0,113,227,0.08); color: var(--accent); font-weight: 600; }
+        .nav-item:active { cursor: grabbing; }
+        .nav-item.dragging { opacity: 0.4; background: rgba(0,0,0,0.05); }
+        .drag-indicator { font-size: 12px; color: #ccc; opacity: 0; }
+        .nav-item:hover .drag-indicator { opacity: 1; }
+
+        /* ===== 主内容 ===== */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 40px 48px 80px;
+            max-width: 1200px;
+        }
+        .category-title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+        }
+        .category-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px; height: 22px;
+            background: var(--accent);
+            border-radius: 4px;
+            margin-right: 12px;
+        }
+
+        /* ===== 通用卡片容器 ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.02);
+            cursor: grab;
+            position: relative;
+        }
+        .card:hover { box-shadow: var(--shadow-hover); }
+        .card:active { cursor: grabbing; }
+        .card.dragging { opacity: 0.4; }
+        
+        .card-logo {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            background: #f5f5f7;
+            display: flex; align-items: center; justify-content: center;
+            margin-right: 14px; flex-shrink: 0; overflow: hidden;
+        }
+        .card-logo span { font-size: 16px; font-weight: 600; color: #555; }
+        .card-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .card-content { flex: 1; min-width: 0; }
+        .card-content h3 {
+            font-size: 14px; font-weight: 600; margin-bottom: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .card-content p {
+            font-size: 12px; color: var(--text-sub);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ===== 实用工具（资源面板）特殊样式 ===== */
+        .resource-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .resource-item {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: grab;
+            transition: all 0.2s;
+            min-height: 140px;
+            position: relative;
+        }
+        .resource-item:hover { box-shadow: var(--shadow-hover); }
+        .resource-item:active { cursor: grabbing; }
+        .resource-item.dragging { opacity: 0.4; }
+        .resource-thumb {
+            width: 64px; height: 64px;
+            border-radius: 12px;
+            background: #f0f0f3;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 12px;
+            overflow: hidden;
+            font-size: 28px;
+        }
+        .resource-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .resource-item h4 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .resource-item p { font-size: 11px; color: var(--text-sub); }
+        
+        .drag-handle {
+            position: absolute;
+            top: 8px; right: 8px;
+            width: 24px; height: 24px;
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            color: #ccc; font-size: 14px;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .resource-item:hover .drag-handle { opacity: 1; }
+
+        /* ===== 占位 ===== */
+        .placeholder {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 60px 20px; color: var(--text-sub); text-align: center;
+        }
+        .placeholder-icon { font-size: 40px; margin-bottom: 16px; opacity: 0.5; }
+        .placeholder p { font-size: 14px; }
+
+        /* ===== 移动端 ===== */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%; position: relative;
+                border-right: none; border-bottom: 1px solid rgba(0,0,0,0.06);
+                padding: 16px; display: flex; flex-wrap: wrap; gap: 8px;
+                align-items: center; overflow-x: auto;
+            }
+            .sidebar-header { padding: 0; border-bottom: none; margin: 0 16px 0 0; }
+            .sidebar-header p { display: none; }
+            .nav-item {
+                padding: 6px 12px; font-size: 12px;
+                white-space: nowrap; margin-bottom: 0;
+            }
+            .main-content { margin-left: 0; padding: 24px 16px 60px; }
+            .category-title { font-size: 20px; }
+            .grid, .resource-panel { grid-template-columns: 1fr; }
+            body { flex-direction: column; }
+        }
+
+        /* ===== 深色模式 ===== */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #000; --sidebar-bg: #1c1c1e; --card-bg: #1c1c1e;
+                --text-main: #f5f5f7; --text-sub: #a1a1a6;
+                --shadow: 0 2px 8px rgba(255,255,255,0.04);
+                --shadow-hover: 0 8px 20px rgba(255,255,255,0.06);
+            }
+            .sidebar { border-right-color: rgba(255,255,255,0.08); }
+            .card, .resource-item { border-color: rgba(255,255,255,0.06); }
+            .card-logo, .resource-thumb { background: #2c2c2e; }
+            .card-logo span { color: #aaa; }
+            .nav-item:hover { background: rgba(255,255,255,0.06); }
+            .nav-item.active { background: rgba(0,113,227,0.15); }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>我的收藏</h1>
+            <p>个人专属导航站</p>
+        </div>
+        <div id="nav-list"></div>
+    </aside>
+
+    <main class="main-content">
+        <h2 class="category-title" id="current-title">AI 工具</h2>
+        <div id="content-area"></div>
+    </main>
+
+    <script>
+        // =========================================================
+        // 📌 数据区：增添修改，通过这里
+        // =========================================================
+        const siteData = [
+            {
+                category: "AI 工具",
+                items: [
+                    { name: "DeepSeek", url: "https://chat.deepseek.com", desc: "国产开源大模型，推理强" },
+                    { name: "ChatGPT", url: "https://chatgpt.com", desc: "OpenAI 全能助手" },
+                    { name: "Claude", url: "https://claude.ai", desc: "长文本与代码专家" },
+                    { name: "Gemini", url: "https://gemini.google.com", desc: "Google 多模态 AI" },
+                    { name: "Grok", url: "https://grok.x.ai", desc: "xAI 实时信息整合" },
+                    { name: "Midjourney", url: "https://midjourney.com", desc: "顶级 AI 绘图" },
+                    { name: "Kimi", url: "https://kimi.moonshot.cn", desc: "国产长文本助手" },
+                    { name: "秘塔搜索", url: "https://metaso.cn", desc: "AI 精准搜索" },
+                    { name: "Coze", url: "https://coze.cn", desc: "无代码 AI 机器人平台" },
+                    { name: "Cursor", url: "https://cursor.sh", desc: "AI 代码编辑器" }
+                ]
+            },
+            {
+                category: "开发者工具",
+                items: [
+                    { name: "Cloudflare", url: "https://dash.cloudflare.com", desc: "全球网络与 Workers 平台" },
+                    { name: "GitHub", url: "https://github.com", desc: "代码托管与协作平台" },
+                    { name: "VS Code", url: "https://code.visualstudio.com", desc: "微软代码编辑器" },
+                    { name: "Vercel", url: "https://vercel.com", desc: "前端部署与托管" },
+                    { name: "Wrangler", url: "https://developers.cloudflare.com/workers/wrangler", desc: "Cloudflare Workers CLI" },
+                    { name: "帽子云", url: "https://dash.maoziyun.com", desc: "静态网页托管" },
+                    { name: "Carbon", url: "https://carbon.now.sh", desc: "把代码变成艺术图片" }
+                ]
+            },
+            {
+                category: "域名服务",
+                items: [
+                    { name: "SpaceShip", url: "https://www.spaceship.com", desc: "Namecheap 旗下注册商" },
+                    { name: "DNSHE", url: "https://dnshe.com", desc: "免费二级域名服务" },
+                    { name: "Cloudflare Registrar", url: "https://www.cloudflare.com/products/registrar", desc: "Cloudflare 官方域名" },
+                    { name: "阿里云万网", url: "https://wanwang.aliyun.com", desc: "国内主流域名注册" },
+                    { name: "Namecheap", url: "https://www.namecheap.com", desc: "老牌海外注册商" },
+                    { name: "Porkbun", url: "https://porkbun.com", desc: "性价比高的注册商" }
+                ]
+            },
+            {
+                category: "流媒体",
+                items: [
+                    { name: "YouTube", url: "https://www.youtube.com", desc: "全球最大视频平台" },
+                    { name: "Twitter / X", url: "https://x.com", desc: "实时社交与资讯" },
+                    { name: "Instagram", url: "https://www.instagram.com", desc: "图片与短视频社交" },
+                    { name: "Facebook", url: "https://www.facebook.com", desc: "全球最大社交网络" },
+                    {name: "telegram", url: "https://web.telegram.org", desc: "纸飞机，电报" },
+                    {name: "", url: "", desc: "" },
+                    { name: "Netflix", url: "https://www.netflix.com", desc: "全球最大流媒体" },
+                    { name: "Bilibili", url: "https://www.bilibili.com", desc: "国内知名视频社区" }
+                ]
+            },
+            {
+                category: "他人博客",
+                items: [
+                    {name: "零度博客", url: "https://www.freedidi.com/", desc: "零度解说的博客" },
+                    {name: "科技猎奇", url: "https://www.freezq.com/", desc: "" },
+                    {name: "web3村长", url: "https://www.cunzhangblog.com/", desc: "" },
+                ] // 留空，你自己填
+            },
+            {
+                category: "个人仪表盘",
+                items: [
+                    { name: "Cloudflare Dashboard", url: "https://dash.cloudflare.com", desc: "Cloudflare 账户后台" },
+                    { name: "GitHub Settings", url: "https://github.com/settings", desc: "GitHub 账户设置" },
+                    { name: "Google Account", url: "https://myaccount.google.com", desc: "Google 管理中心" }
+                ]
+            },
+            {
+                category: "邮箱服务",
+                items: [
+                    { name: "Gmail", url: "https://mail.google.com", desc: "Google 邮箱服务" },
+                    { name: "Google 账号", url: "https://accounts.google.com", desc: "Google 账号管理" },
+                    { name: "163 邮箱", url: "https://mail.163.com", desc: "网易邮箱" },
+                    { name: "Outlook", url: "https://outlook.live.com", desc: "微软邮箱服务" }
+                ]
+            },
+            {
+                category: "信息源",
+                items: [
+                    {name: "Z-library", url: "https://zh.z-library.ec", desc: "全世界最大电子图书馆" },
+                    {name: "纽约时报", url: "https://cn.nytimes.com", desc: "纽约时报中文版" },
+                    {name: "维基百科", url: "https://www.britannica.com", desc: "" },
+                ] // 留空，你自己填
+            },
+            {
+                category: "个人域名",
+                items: [
+                    {name: "spaceship", url: "https://www.spaceship.com", desc: "10704002.xyz从这里买的" },
+                    {name: "xyz域名", url: "10704002.xyz", desc: "我买的域名" },
+                    {name: "edgetunel", url: "https://cfoo-680.pages.dev/admin", desc: "通过cf反向代理的翻墙，面板" },
+                    {name: "良心云", url: "https://xn--9kqz23b19z.com/", desc: "" },
+                ] // 留空，你自己填
+            },
+            {
+                category: "科学上网",
+                items: [
+                    {name: "独角鲸云", url: "https://dash.fuckip.me", desc: "net小鸡" },
+                    {name: "freeSocks", url: "https://freesocks.org/", desc: "免费节点，备用" },
+                    {name: "yandex", url: "https://yandex.com/", desc: "俄罗斯搜索引擎" },
+                ] // 留空，你自己填
+            },
+            {
+                category: "实用工具和资源站",
+                items: [
+                    {name: "ilovePDF", url: "https://www.ilovepdf.com", desc: "PDF处理工具" },
+                    {name: "FMHY", url: "https://fmhy.net", desc: "很大的资源站" },
+                    {name: "", url: "", desc: "" },
+
+                ] // 留空，你自己填
+            },
+            {
+                category: "自创工具",
+                items: [] // 留空，你自己填
+            },
+            {
+                category: "软件文件类",
+                isResource: true, // 资源面板模式，长按拖拽
+                items: [
+                    { name: "待定", url: "#", desc: "以后放软件或图片" }
+                ]
+            }
+        ];
+
+        // =========================================================
+        // 🚀 渲染逻辑：无需改动
+        // =========================================================
+        const navList = document.getElementById('nav-list');
+        const currentTitle = document.getElementById('current-title');
+        const contentArea = document.getElementById('content-area');
+
+        let savedNavOrder = null;
+        try { savedNavOrder = JSON.parse(localStorage.getItem('nav_order')); } catch(e) {}
+
+        let orderedSiteData = [...siteData];
+        if (savedNavOrder && Array.isArray(savedNavOrder)) {
+            orderedSiteData = savedNavOrder.map(name => 
+                siteData.find(g => g.category === name)
+            ).filter(Boolean);
+        }
+
+        let currentIndex = 0;
+
+        function renderNav() {
+            navList.innerHTML = '';
+            orderedSiteData.forEach((group, index) => {
+                const div = document.createElement('div');
+                div.className = 'nav-item' + (index === currentIndex ? ' active' : '');
+                div.draggable = true;
+                div.dataset.category = group.category;
+
+                div.innerHTML = `<span>${group.category}</span><span class="drag-indicator">⋮⋮</span>`;
+
+                div.onclick = () => {
+                    currentIndex = index;
+                    renderAll();
+                };
+
+                div.addEventListener('dragstart', (e) => {
+                    div.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', group.category);
+                });
+                div.addEventListener('dragend', () => {
+                    div.classList.remove('dragging');
+                    const names = [...navList.querySelectorAll('.nav-item')].map(el => el.dataset.category);
+                    try { localStorage.setItem('nav_order', JSON.stringify(names)); } catch(e) {}
+                    currentIndex = names.indexOf(orderedSiteData[currentIndex].category);
+                });
+                div.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const dragging = navList.querySelector('.dragging');
+                    if (!dragging || dragging === div) return;
+                    const rect = div.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / rect.height > 0.5;
+                    navList.insertBefore(dragging, next ? div.nextSibling : div);
+                });
+
+                navList.appendChild(div);
+            });
+        }
+
+        function renderContent() {
+            const group = orderedSiteData[currentIndex];
+            if (!group) return;
+            
+            currentTitle.innerText = group.category;
+            contentArea.innerHTML = '';
+
+            if (!group.items || group.items.length === 0) {
+                contentArea.innerHTML = `
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📂</div>
+                        <p>这个分类还是空的，待你自己来填充</p>
+                    </div>`;
+                return;
+            }
+
+            if (group.isResource) {
+                renderResourcePanel(group);
+            } else {
+                renderCardGrid(group);
+            }
+        }
+
+        function renderCardGrid(group) {
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+            grid.dataset.category = group.category;
+
+            let orderedItems = [...group.items];
+            try {
+                const saved = JSON.parse(localStorage.getItem(`sort_${group.category}`));
+                if (saved && Array.isArray(saved)) {
+                    orderedItems = saved.map(name => group.items.find(i => i.name === name)).filter(Boolean);
+                }
+            } catch(e) {}
+
+            orderedItems.forEach(item => {
+                let domain = '';
+                try { domain = new URL(item.url).hostname; } catch(e) {}
+                const logoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
+                const card = document.createElement('a');
+                card.href = item.url;
+                card.target = "_blank";
+                card.className = 'card';
+                card.draggable = true;
+                card.dataset.name = item.name;
+
+                card.innerHTML = `
+                    <div class="card-logo">
+                        <img src="${logoUrl}" alt="${item.name}" onerror="this.style.display='none'; this.parentNode.innerHTML='<span>${item.name.charAt(0).toUpperCase()}</span>';">
+                    </div>
+                    <div class="card-content">
+                        <h3>${item.name}</h3>
+                        <p>${item.desc}</p>
+                    </div>
+                `;
+
+                card.addEventListener('dragstart', (e) => {
+                    card.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', item.name);
+                });
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                    saveGridOrder(grid, group.category);
+                });
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const dragging = grid.querySelector('.dragging');
+                    if (!dragging || dragging === card) return;
+                    const rect = card.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / rect.height > 0.5;
+                    grid.insertBefore(dragging, next ? card.nextSibling : card);
+                });
+
+                grid.appendChild(card);
+            });
+            contentArea.appendChild(grid);
+        }
+
+        function renderResourcePanel(group) {
+            const panel = document.createElement('div');
+            panel.className = 'resource-panel';
+            panel.dataset.category = group.category;
+
+            let orderedItems = [...group.items];
+            try {
+                const saved = JSON.parse(localStorage.getItem(`sort_${group.category}`));
+                if (saved && Array.isArray(saved)) {
+                    orderedItems = saved.map(name => group.items.find(i => i.name === name)).filter(Boolean);
+                }
+            } catch(e) {}
+
+            orderedItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'resource-item';
+                el.draggable = true;
+                el.dataset.name = item.name;
+
+                let thumbHtml = item.thumb ? `<img src="${item.thumb}" alt="${item.name}">` : '📄';
+
+                el.innerHTML = `
+                    <div class="drag-handle">⋮⋮</div>
+                    <div class="resource-thumb">${thumbHtml}</div>
+                    <h4>${item.name}</h4>
+                    <p>${item.desc}</p>
+                `;
+
+                el.addEventListener('dragstart', (e) => {
+                    el.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', item.name);
+                });
+                el.addEventListener('dragend', () => {
+                    el.classList.remove('dragging');
+                    saveGridOrder(panel, group.category);
+                });
+                el.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const dragging = panel.querySelector('.dragging');
+                    if (!dragging || dragging === el) return;
+                    const rect = el.getBoundingClientRect();
+                    const next = (e.clientY - rect.top) / rect.height > 0.5;
+                    panel.insertBefore(dragging, next ? el.nextSibling : el);
+                });
+
+                panel.appendChild(el);
+            });
+            contentArea.appendChild(panel);
+        }
+
+        function saveGridOrder(container, category) {
+            const names = [...container.querySelectorAll('[draggable="true"]')].map(el => el.dataset.name);
+            try { localStorage.setItem(`sort_${category}`, JSON.stringify(names)); } catch(e) {}
+        }
+
+        function renderAll() {
+            renderNav();
+            renderContent();
+        }
+
+        renderAll();
+    </script>
+</body>
+</html>
